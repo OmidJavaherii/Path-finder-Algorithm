@@ -652,7 +652,7 @@ export default function Home() {
                   className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isRunning}
                 >
-                  {[5, 10, 15, 20, 25, 30, 40, 50, 75, 100].map((size) => (
+                  {[5, 10, 15, 20, 25, 30].map((size) => (
                     <option key={size} value={size}>
                       {size}x{size}
                     </option>
