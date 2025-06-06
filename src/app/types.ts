@@ -6,4 +6,4 @@ export interface Cell {
   col: number;
 }
 
-export type Algorithm = 'dijkstra' | 'a*' | 'bfs' | 'dfs'; 
+export type Algorithm = 'dijkstra' | 'a*' | 'bfs' | 'dfs' | 'greedy'; 

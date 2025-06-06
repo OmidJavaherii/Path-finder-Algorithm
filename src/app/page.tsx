@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useTheme } from "./theme-provider";
 import { Cell, Algorithm, CellType } from "./types";
-import { bfs, dfs, dijkstra, aStar, AlgorithmResult } from "./algorithms";
+import { bfs, dfs, dijkstra, aStar, greedyBestFirst, AlgorithmResult } from "./algorithms";
 
 const algorithmDetails = {
   dijkstra: {
@@ -87,6 +87,26 @@ const algorithmDetails = {
       "Doesn't guarantee the shortest path",
       "Can get stuck in deep paths",
       "May not find a solution even if one exists",
+    ],
+  },
+  greedy: {
+    name: "Greedy Best-First Search",
+    description:
+      "Greedy Best-First Search uses a heuristic function to estimate the distance to the goal and always explores the node that appears to be closest to the goal.",
+    details:
+      "This algorithm is similar to A* but only uses the heuristic function (h) without considering the actual cost from the start (g). It's called 'greedy' because it always chooses the path that appears to be the best at each step, without considering the total path cost. While it's very fast, it doesn't guarantee the shortest path.",
+    timeComplexity: "O(E log V)",
+    spaceComplexity: "O(V)",
+    useCases: "Quick pathfinding when optimality isn't required, game AI, simple navigation",
+    advantages: [
+      "Very fast execution",
+      "Memory efficient",
+      "Good for real-time applications",
+    ],
+    disadvantages: [
+      "Doesn't guarantee the shortest path",
+      "Can get stuck in local optima",
+      "Sensitive to heuristic quality",
     ],
   },
 };
@@ -326,6 +346,9 @@ export default function Home() {
         break;
       case "dfs":
         result = dfs(grid);
+        break;
+      case "greedy":
+        result = greedyBestFirst(grid);
         break;
       default:
         result = { path: [], visited: [], success: false };
@@ -748,6 +771,7 @@ export default function Home() {
                 >
                   <option value="dijkstra">Dijkstra's Algorithm</option>
                   <option value="a*">A* Search</option>
+                  <option value="greedy">Greedy Best-First Search</option>
                   <option value="bfs">Breadth First Search</option>
                   <option value="dfs">Depth First Search</option>
                 </select>
