@@ -110,6 +110,9 @@ export default function Home() {
   const [isStandalone, setIsStandalone] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
+  const [touchStartTime, setTouchStartTime] = useState<number | null>(null);
+  const touchTimeoutRef = useRef<NodeJS.Timeout>();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Detect iOS and standalone mode
   useEffect(() => {
@@ -248,34 +251,6 @@ export default function Home() {
   );
 
   const handleMouseUp = useCallback(() => {
-    setIsDrawing(false);
-  }, []);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent, row: number, col: number) => {
-    if (isRunning) return;
-    e.preventDefault(); // Prevent scrolling
-    setIsDrawing(true);
-    handleCellClick(row, col);
-  }, [isRunning, handleCellClick]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDrawing || isRunning) return;
-    e.preventDefault(); // Prevent scrolling
-    
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (!element) return;
-
-    const cellElement = element.closest('[data-cell]');
-    if (!cellElement) return;
-
-    const [row, col] = cellElement.getAttribute('data-cell')?.split('-').map(Number) || [];
-    if (typeof row === 'number' && typeof col === 'number') {
-      handleCellClick(row, col);
-    }
-  }, [isDrawing, isRunning, handleCellClick]);
-
-  const handleTouchEnd = useCallback(() => {
     setIsDrawing(false);
   }, []);
 
@@ -425,6 +400,58 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [isRunning, clearGrid, clearPath, toggleTheme, runAlgorithm]);
 
+  // Initialize audio
+  useEffect(() => {
+    audioRef.current = new Audio('/sounds/click.mp3');
+    audioRef.current.volume = 0.3;
+  }, []);
+
+  const playSound = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {
+        // Ignore autoplay errors
+      });
+    }
+  }, []);
+
+  const handleTouchStart = useCallback((row: number, col: number) => {
+    if (isRunning) return;
+    
+    setTouchStartTime(Date.now());
+    touchTimeoutRef.current = setTimeout(() => {
+      // After 500ms, start drawing walls
+      setIsDrawing(true);
+      handleCellClick(row, col);
+      playSound();
+    }, 500);
+  }, [isRunning, handleCellClick, playSound]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent, row: number, col: number) => {
+    if (!isDrawing || isRunning) return;
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (element) {
+      const cellElement = element.closest('[data-cell]');
+      if (cellElement) {
+        const [r, c] = cellElement.getAttribute('data-cell')?.split('-').map(Number) || [];
+        if (r !== undefined && c !== undefined) {
+          handleCellClick(r, c);
+          playSound();
+        }
+      }
+    }
+  }, [isDrawing, isRunning, handleCellClick, playSound]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+    }
+    setTouchStartTime(null);
+    setIsDrawing(false);
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
       {/* Welcome Modal */}
@@ -477,13 +504,13 @@ export default function Home() {
                       Ctrl/Cmd + D
                     </kbd>
                     <span>Toggle Theme</span>
-                  </li>
+          </li>
                   <li className="flex items-center gap-2">
                     <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm">
                       Space
                     </kbd>
                     <span>Start</span>
-                  </li>
+          </li>
                 </ul>
               </div>
             </div>
@@ -510,7 +537,7 @@ export default function Home() {
                         <li>Tap the Share button in your browser</li>
                         <li>Select "Add to Home Screen"</li>
                         <li>Tap "Add" to install</li>
-                      </ol>
+        </ol>
                       <div className="mt-3 flex items-center justify-center">
                         <svg className="w-6 h-6 text-blue-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -813,7 +840,7 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
           <div
             ref={gridRef}
-            className="grid gap-0.5 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-xl mx-auto touch-none"
+            className="grid gap-0.5 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-xl mx-auto"
             style={{
               gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
               maxWidth: "100%",
@@ -827,17 +854,22 @@ export default function Home() {
                   key={`${rowIndex}-${colIndex}`}
                   data-cell={`${rowIndex}-${colIndex}`}
                   className={twMerge(
-                    "aspect-square transition-colors duration-200 border rounded-lg select-none touch-none",
+                    "aspect-square transition-colors duration-200 border rounded-lg touch-none select-none",
                     getCellColor(cell.type)
                   )}
-                  onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
-                  onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
+                  onMouseDown={() => {
+                    handleMouseDown(rowIndex, colIndex);
+                    playSound();
+                  }}
+                  onMouseEnter={() => {
+                    handleMouseEnter(rowIndex, colIndex);
+                    if (isDrawing) playSound();
+                  }}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
-                  onTouchStart={(e) => handleTouchStart(e, rowIndex, colIndex)}
-                  onTouchMove={handleTouchMove}
+                  onTouchStart={() => handleTouchStart(rowIndex, colIndex)}
+                  onTouchMove={(e) => handleTouchMove(e, rowIndex, colIndex)}
                   onTouchEnd={handleTouchEnd}
-                  onTouchCancel={handleTouchEnd}
                 />
               ))
             )}
@@ -849,7 +881,7 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+    </div>
     </main>
   );
 }
