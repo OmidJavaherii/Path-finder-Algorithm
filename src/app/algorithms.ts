@@ -298,94 +298,62 @@ export const aStar = (grid: Cell[][]): AlgorithmResult => {
 };
 
 export function greedyBestFirst(grid: Cell[][]): AlgorithmResult {
-  const rows = grid.length;
-  const cols = grid[0].length;
-  const visited: Position[] = [];
-  const path: Position[] = [];
-  const openSet: Position[] = [];
+  const { start, end } = findStartAndEnd(grid);
+  if (!start || !end) return { path: [], visited: [], success: false };
+
+  const openSet = new Set<string>([`${start.row},${start.col}`]);
   const closedSet = new Set<string>();
-  const cameFrom = new Map<string, Position>();
-
-  // Find start and end positions
-  let start: Position | null = null;
-  let end: Position | null = null;
-
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      if (grid[i][j].type === "start") start = { row: i, col: j };
-      if (grid[i][j].type === "end") end = { row: i, col: j };
-    }
-  }
-
-  if (!start || !end) {
-    return { path, visited, success: false };
-  }
+  const parent = new Map<string, Position>();
+  const visitedPositions: Position[] = [];
 
   // Heuristic function (Manhattan distance)
-  const heuristic = (pos: Position) => {
-    return Math.abs(pos.row - end!.row) + Math.abs(pos.col - end!.col);
+  const heuristic = (pos: Position): number => {
+    return Math.abs(pos.row - end.row) + Math.abs(pos.col - end.col);
   };
 
-  // Initialize open set with start position
-  openSet.push(start);
-  closedSet.add(`${start.row}-${start.col}`);
-
-  while (openSet.length > 0) {
-    // Find the position with the lowest heuristic value
-    let currentIndex = 0;
-    for (let i = 0; i < openSet.length; i++) {
-      if (heuristic(openSet[i]) < heuristic(openSet[currentIndex])) {
-        currentIndex = i;
+  while (openSet.size > 0) {
+    // Find node with lowest heuristic value
+    let currentKey = '';
+    let lowestHeuristic = Infinity;
+    for (const key of openSet) {
+      const [row, col] = key.split(',').map(Number);
+      const h = heuristic({ row, col });
+      if (h < lowestHeuristic) {
+        lowestHeuristic = h;
+        currentKey = key;
       }
     }
 
-    const current = openSet[currentIndex];
-    visited.push(current);
+    const [currentRow, currentCol] = currentKey.split(',').map(Number);
+    const current = { row: currentRow, col: currentCol };
 
-    // Remove current from open set
-    openSet.splice(currentIndex, 1);
-
-    // Check if we reached the end
     if (current.row === end.row && current.col === end.col) {
       // Reconstruct path
-      let pos = current;
-      while (pos.row !== start.row || pos.col !== start.col) {
-        path.unshift(pos);
-        const key = `${pos.row}-${pos.col}`;
-        pos = cameFrom.get(key)!;
+      const path: Position[] = [];
+      let currentPos = end;
+      while (currentPos.row !== start.row || currentPos.col !== start.col) {
+        path.unshift(currentPos);
+        const parentKey = `${currentPos.row},${currentPos.col}`;
+        currentPos = parent.get(parentKey)!;
       }
       path.unshift(start);
-      return { path, visited, success: true };
+      return { path, visited: visitedPositions, success: true };
     }
 
-    // Check all neighbors
-    const neighbors = [
-      { row: current.row - 1, col: current.col }, // up
-      { row: current.row + 1, col: current.col }, // down
-      { row: current.row, col: current.col - 1 }, // left
-      { row: current.row, col: current.col + 1 }, // right
-    ];
+    openSet.delete(currentKey);
+    closedSet.add(currentKey);
+    visitedPositions.push(current);
 
-    for (const neighbor of neighbors) {
-      // Check if neighbor is valid
-      if (
-        neighbor.row < 0 ||
-        neighbor.row >= rows ||
-        neighbor.col < 0 ||
-        neighbor.col >= cols ||
-        grid[neighbor.row][neighbor.col].type === "wall" ||
-        closedSet.has(`${neighbor.row}-${neighbor.col}`)
-      ) {
-        continue;
-      }
+    for (const neighbor of getNeighbors(grid, current)) {
+      const neighborKey = `${neighbor.row},${neighbor.col}`;
+      if (closedSet.has(neighborKey)) continue;
 
-      // Add to open set if not already there
-      if (!openSet.some(pos => pos.row === neighbor.row && pos.col === neighbor.col)) {
-        openSet.push(neighbor);
-        cameFrom.set(`${neighbor.row}-${neighbor.col}`, current);
+      if (!openSet.has(neighborKey)) {
+        openSet.add(neighborKey);
+        parent.set(neighborKey, current);
       }
     }
   }
 
-  return { path, visited, success: false };
+  return { path: [], visited: visitedPositions, success: false };
 } 

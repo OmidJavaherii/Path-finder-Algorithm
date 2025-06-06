@@ -323,7 +323,7 @@ export default function Home() {
   );
 
   const runAlgorithm = useCallback(async () => {
-    clearPath()
+    clearPath();
     if (isRunning) {
       setIsRunning(false);
       return;
@@ -334,33 +334,38 @@ export default function Home() {
     setShowAlgorithmDetails(false);
 
     let result: AlgorithmResult;
-    switch (selectedAlgorithm) {
-      case "dijkstra":
-        result = dijkstra(grid);
-        break;
-      case "a*":
-        result = aStar(grid);
-        break;
-      case "bfs":
-        result = bfs(grid);
-        break;
-      case "dfs":
-        result = dfs(grid);
-        break;
-      case "greedy":
-        result = greedyBestFirst(grid);
-        break;
-      default:
-        result = { path: [], visited: [], success: false };
+    try {
+      switch (selectedAlgorithm) {
+        case "dijkstra":
+          result = dijkstra(grid);
+          break;
+        case "a*":
+          result = aStar(grid);
+          break;
+        case "bfs":
+          result = bfs(grid);
+          break;
+        case "dfs":
+          result = dfs(grid);
+          break;
+        case "greedy":
+          result = greedyBestFirst(grid);
+          break;
+        default:
+          result = { path: [], visited: [], success: false };
+      }
+
+      await visualizeAlgorithm(result);
+
+      const endTime = performance.now();
+      setExecutionTime(endTime - startTime);
+    } catch (error) {
+      console.error('Algorithm execution error:', error);
+      alert('An error occurred while running the algorithm. Please try again.');
+    } finally {
+      setIsRunning(false);
     }
-
-    await visualizeAlgorithm(result);
-
-    const endTime = performance.now();
-    setExecutionTime(endTime - startTime);
-    setIsRunning(false);
-    // setShowAlgorithmDetails(true);
-  }, [grid, selectedAlgorithm, isRunning, visualizeAlgorithm]);
+  }, [grid, selectedAlgorithm, isRunning, visualizeAlgorithm, clearPath]);
 
   const getCellColor = (type: CellType) => {
     const isDark = theme === "dark";
