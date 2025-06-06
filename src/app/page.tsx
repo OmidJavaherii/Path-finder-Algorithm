@@ -251,6 +251,34 @@ export default function Home() {
     setIsDrawing(false);
   }, []);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent, row: number, col: number) => {
+    if (isRunning) return;
+    e.preventDefault(); // Prevent scrolling
+    setIsDrawing(true);
+    handleCellClick(row, col);
+  }, [isRunning, handleCellClick]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDrawing || isRunning) return;
+    e.preventDefault(); // Prevent scrolling
+    
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!element) return;
+
+    const cellElement = element.closest('[data-cell]');
+    if (!cellElement) return;
+
+    const [row, col] = cellElement.getAttribute('data-cell')?.split('-').map(Number) || [];
+    if (typeof row === 'number' && typeof col === 'number') {
+      handleCellClick(row, col);
+    }
+  }, [isDrawing, isRunning, handleCellClick]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDrawing(false);
+  }, []);
+
   const visualizeAlgorithm = useCallback(
     async (result: AlgorithmResult) => {
       if (!result.success) {
@@ -300,6 +328,7 @@ export default function Home() {
   );
 
   const runAlgorithm = useCallback(async () => {
+    clearPath()
     if (isRunning) {
       setIsRunning(false);
       return;
@@ -453,7 +482,7 @@ export default function Home() {
                     <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm">
                       Space
                     </kbd>
-                    <span>Start/Stop</span>
+                    <span>Start</span>
                   </li>
                 </ul>
               </div>
@@ -652,7 +681,7 @@ export default function Home() {
                   className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isRunning}
                 >
-                  {[5, 10, 15, 20, 25, 30, 40, 50, 75, 100].map((size) => (
+                  {[5, 10, 15, 20, 25, 30].map((size) => (
                     <option key={size} value={size}>
                       {size}x{size}
                     </option>
@@ -784,7 +813,7 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
           <div
             ref={gridRef}
-            className="grid gap-0.5 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-xl mx-auto"
+            className="grid gap-0.5 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-xl mx-auto touch-none"
             style={{
               gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
               maxWidth: "100%",
@@ -796,14 +825,19 @@ export default function Home() {
               row.map((cell, colIndex) => (
                 <div
                   key={`${rowIndex}-${colIndex}`}
+                  data-cell={`${rowIndex}-${colIndex}`}
                   className={twMerge(
-                    "aspect-square transition-colors duration-200 border rounded-lg",
+                    "aspect-square transition-colors duration-200 border rounded-lg select-none touch-none",
                     getCellColor(cell.type)
                   )}
                   onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
                   onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
+                  onTouchStart={(e) => handleTouchStart(e, rowIndex, colIndex)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
                 />
               ))
             )}
